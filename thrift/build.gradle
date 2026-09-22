@@ -1,5 +1,50 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
+application {
+    mainClass = 'mashup.thrift.MovieServiceServer'
+}
 
+repositories {
+    mavenCentral()
+}
+
+def generatedThriftDir = layout.buildDirectory.dir('generated-sources/thrift').get().asFile
+
+tasks.register('generateThrift', Exec) {
+    def thriftFile = file('src/main/thrift/movie.thrift')
+    inputs.file(thriftFile)
+    outputs.dir(generatedThriftDir)
+    doFirst {
+        generatedThriftDir.mkdirs()
+    }
+    commandLine 'thrift', '--gen', 'java:generated_annotations=undated', '-out', generatedThriftDir, thriftFile
+}
+
+compileJava.dependsOn(generateThrift)
+
+sourceSets {
+    main {
+        java {
+            srcDir generatedThriftDir
+        }
+    }
+}
+
+dependencies {
+    implementation project(':model')
+    compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+    implementation 'org.apache.thrift:libthrift:0.19.0'
+    implementation 'org.slf4j:slf4j-api:2.0.16'
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.16'
+
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
